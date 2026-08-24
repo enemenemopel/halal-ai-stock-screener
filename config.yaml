@@ -1,0 +1,119 @@
+# ============================================================
+# Halal AI Stock Screener – Konfiguration
+# Alle wichtigen Parameter sind hier zentral einstellbar.
+# ============================================================
+
+schedule:
+  timezone: "Europe/Berlin"
+  morning_time: "08:00"
+  evening_time: "17:30"
+  # Hinweis: Die tatsächliche Ausführungszeit wird über die Cron-Ausdrücke
+  # in .github/workflows/screener.yml gesteuert (GitHub Actions cron läuft
+  # in UTC). Wenn du die Zeiten hier änderst, musst du auch die Cron-Werte
+  # in der workflow-Datei anpassen. Im README steht eine Umrechnungstabelle.
+
+email:
+  recipient: "assilbash@gmx.de"
+  subject_morning: "📈 Halal Stock Screener – Morning Report"
+  subject_evening: "📉 Halal Stock Screener – Evening Report"
+
+universe:
+  # Aktienuniversum. Für den Start bewusst überschaubar gehalten
+  # (liquide Large Caps), kann beliebig erweitert werden.
+  tickers:
+    - AAPL
+    - MSFT
+    - NVDA
+    - GOOGL
+    - AMZN
+    - META
+    - TSLA
+    - AVGO
+    - AMD
+    - ADBE
+    - CRM
+    - COST
+    - PEP
+    - INTC
+    - QCOM
+    - TXN
+    - CSCO
+    - NKE
+    - PYPL
+    - NFLX
+  min_avg_dollar_volume: 20000000   # Mindest-Handelsvolumen (Kurs x Volumen), 20M USD/Tag
+  min_price_usd: 5.0                # keine Penny Stocks
+
+halal_screening:
+  # Vereinfachte Annäherung an gängige Shariah-Screening-Methoden
+  # (z.B. AAOIFI-Standard / Musaffa / S&P Islamic Index Methodik).
+  # WICHTIG: Dies ist KEINE verbindliche religiöse Auskunft (Fatwa),
+  # sondern eine automatisierte Näherung auf Basis öffentlicher Finanzdaten.
+  method_name: "AAOIFI-nahe Näherung (vereinfacht, automatisiert)"
+  max_debt_to_marketcap: 0.33
+  max_interest_securities_to_marketcap: 0.33
+  max_receivables_to_marketcap: 0.49
+  max_non_permissible_income_ratio: 0.05
+  excluded_sectors_keywords:
+    - "bank"
+    - "insurance"
+    - "financial services"
+    - "capital markets"
+    - "credit services"
+    - "alcohol"
+    - "brewer"
+    - "distiller"
+    - "tobacco"
+    - "cigarette"
+    - "gambling"
+    - "casino"
+    - "resorts & casinos"
+    - "pork"
+    - "adult"
+    - "defense"          # umstritten -> vorsorglich ausgeschlossen, siehe README
+    - "aerospace & defense"
+  # Wenn eine der benötigten Kennzahlen fehlt, wird die Aktie NICHT als
+  # halal deklariert, sondern als "NICHT VERFÜGBAR" markiert und von der
+  # weiteren Analyse ausgeschlossen (siehe Regel #26 der Spezifikation).
+  max_data_age_days: 30
+
+scoring_weights:
+  # Muss in Summe 100 ergeben.
+  news: 30
+  macro: 20
+  analysts: 20
+  earnings: 15
+  technical: 10
+  volume_momentum: 5
+
+risk:
+  min_risk_reward: 2.0        # Mindest-R/R für TP1, sonst kein Setup
+  preferred_risk_reward: 2.5  # ab hier höheres Ranking
+  atr_period: 14
+  atr_stop_multiplier: 1.3    # Abstand SL zur Struktur in ATR-Einheiten
+  breakout_confirmation_pct: 0.3   # % über Widerstand, um Breakout zu bestätigen
+  event_risk_blackout_hours: 24    # Stunden vor High-Impact-Event -> höheres Risiko
+
+ranking:
+  max_long_setups: 5
+  max_short_setups: 5
+
+market_regime:
+  index_tickers:
+    broad: "^GSPC"     # S&P 500
+    tech: "^IXIC"      # Nasdaq Composite
+    volatility: "^VIX"
+  bullish_ma_period: 50
+  lookback_days: 120
+
+data_sources:
+  # Kostenlose Datenquellen. Wenn ein Limit erreicht wird oder Daten fehlen,
+  # wird die Quelle übersprungen (keine erfundenen Werte, siehe Regel #26).
+  price_data: "yfinance"
+  news_data: "google_news_rss"
+  macro_data: "fred"          # benötigt kostenlosen FRED_API_KEY (siehe README)
+  earnings_data: "yfinance"
+  analyst_data: "yfinance"
+
+logging:
+  level: "INFO"
