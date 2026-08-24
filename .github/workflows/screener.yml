@@ -1,0 +1,59 @@
+name: Halal AI Stock Screener
+
+on:
+  schedule:
+    - cron: "0 6 * * 1-5"    # Morgen-Lauf, Mo-Fr, 06:00 UTC
+    - cron: "30 15 * * 1-5"  # Abend-Lauf, Mo-Fr, 15:30 UTC
+  workflow_dispatch:
+    inputs:
+      run_type:
+        description: "morning oder evening (nur für manuellen Start relevant)"
+        required: false
+        default: "morning"
+        type: choice
+        options:
+          - morning
+          - evening
+
+jobs:
+  run-screener:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Abhängigkeiten installieren
+        run: pip install -r requirements.txt
+
+      - name: Run-Typ bestimmen (morgens/abends anhand der UTC-Uhrzeit)
+        id: determine_run_type
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.run_type }}" ]; then
+            echo "run_type=${{ inputs.run_type }}" >> "$GITHUB_OUTPUT"
+          else
+            HOUR=$(date -u +%H)
+            if [ "$HOUR" -lt 12 ]; then
+              echo "run_type=morning" >> "$GITHUB_OUTPUT"
+            else
+              echo "run_type=evening" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Screener ausführen
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+        run: python main.py --run-type ${{ steps.determine_run_type.outputs.run_type }}
