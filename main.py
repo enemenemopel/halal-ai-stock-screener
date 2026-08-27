@@ -40,6 +40,7 @@ from data.macro import fetch_macro_snapshot
 from data.market_data import fetch_price_data
 from data.news import fetch_company_news
 from notifications.email import EmailConfigError, EmailSendError, send_report_email
+from state import already_sent_today, mark_sent
 
 logging.basicConfig(
     level=logging.INFO,
@@ -239,8 +240,15 @@ def build_email_content(results: list, regime, macro_available: bool, run_type: 
     return text_body, html_body, longs, shorts
 
 
-def run(run_type: str, config_path: str = "config.yaml") -> int:
+def run(run_type: str, config_path: str = "config.yaml", state_path: str = "state/last_sent.json") -> int:
     config = load_config(config_path)
+
+    # Verhindert Doppel-Mails, wenn der Workflow mehrfach innerhalb eines
+    # Zeitfensters ausgelöst wird (siehe .github/workflows/screener.yml).
+    if already_sent_today(state_path, run_type):
+        logger.info("Für '%s' wurde heute bereits erfolgreich eine E-Mail verschickt – überspringe Lauf.", run_type)
+        return 0
+
     logger.info("Starte Screening-Lauf (%s)...", run_type)
 
     regime = determine_market_regime(config)
@@ -279,6 +287,7 @@ def run(run_type: str, config_path: str = "config.yaml") -> int:
         logger.error("E-Mail-Versand fehlgeschlagen: %s", exc)
         return 1
 
+    mark_sent(state_path, run_type)
     return 0
 
 
