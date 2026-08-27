@@ -2,8 +2,27 @@ name: Halal AI Stock Screener
 
 on:
   schedule:
-    - cron: "0 6 * * 1-5"    # Morgen-Lauf, Mo-Fr, 06:00 UTC
-    - cron: "30 15 * * 1-5"  # Abend-Lauf, Mo-Fr, 15:30 UTC
+    # GitHub kann geplante (Cron-)Läufe zu Stoßzeiten komplett überspringen
+    # (dokumentierte Einschränkung, kein Bug). Deshalb läuft der Workflow
+    # hier mehrfach in einem Zeitfenster – main.py verschickt dank state.py
+    # trotzdem garantiert nur EINE E-Mail pro Fenster und Tag.
+    #
+    # Fenster "morning"  ~ 06:00–08:00 UTC (≈ 08:00–10:00 Uhr Sommerzeit DE)
+    - cron: "0 6 * * 1-5"
+    - cron: "20 6 * * 1-5"
+    - cron: "40 6 * * 1-5"
+    - cron: "0 7 * * 1-5"
+    - cron: "20 7 * * 1-5"
+    - cron: "40 7 * * 1-5"
+    - cron: "0 8 * * 1-5"
+    # Fenster "evening" ~ 15:30–17:30 UTC (≈ 17:30–19:30 Uhr Sommerzeit DE)
+    - cron: "30 15 * * 1-5"
+    - cron: "50 15 * * 1-5"
+    - cron: "10 16 * * 1-5"
+    - cron: "30 16 * * 1-5"
+    - cron: "50 16 * * 1-5"
+    - cron: "10 17 * * 1-5"
+    - cron: "30 17 * * 1-5"
   workflow_dispatch:
     inputs:
       run_type:
@@ -14,6 +33,9 @@ on:
         options:
           - morning
           - evening
+
+permissions:
+  contents: write   # nötig, damit der Workflow den Sende-Status (state/last_sent.json) zurück ins Repo schreiben darf
 
 jobs:
   run-screener:
@@ -36,24 +58,4 @@ jobs:
       - name: Run-Typ bestimmen (morgens/abends anhand der UTC-Uhrzeit)
         id: determine_run_type
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.run_type }}" ]; then
-            echo "run_type=${{ inputs.run_type }}" >> "$GITHUB_OUTPUT"
-          else
-            HOUR=$(date -u +%H)
-            if [ "$HOUR" -lt 12 ]; then
-              echo "run_type=morning" >> "$GITHUB_OUTPUT"
-            else
-              echo "run_type=evening" >> "$GITHUB_OUTPUT"
-            fi
-          fi
-
-      - name: Screener ausführen
-        env:
-          SMTP_HOST: ${{ secrets.SMTP_HOST }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
-          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-          MAIL_TO: ${{ secrets.MAIL_TO }}
-          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
-        run: python main.py --run-type ${{ steps.determine_run_type.outputs.run_type }}
+          if [ "${{ github.event_name }}" = "workflow_dispatch"
