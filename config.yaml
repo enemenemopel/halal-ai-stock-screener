@@ -117,3 +117,9 @@ data_sources:
 
 logging:
   level: "INFO"
+decision_thresholds:
+  # Ab hier wird ein Signal überhaupt als LONG/SHORT angezeigt (statt NO TRADE).
+  # Kleinere Werte = mehr, aber unsichereren Signalen; größere Werte = strenger/seltener.
+  min_used_weight_pct: 40   # Mindestanteil der Gewichtung, der mit echten Daten unterlegt sein muss
+  min_score: 40             # Mindest-Score (0-100), den Long oder Short erreichen muss
+  min_score_diff: 10        # Mindestabstand zwischen Long- und Short-Score
